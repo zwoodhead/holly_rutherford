@@ -7,6 +7,9 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+require(stargazer)
+require(tidyverse)
+require(yarrr)
 ```
 
 ## R Markdown
@@ -24,9 +27,125 @@ Preregistered hypotheses:
 **Hypothesis 2**: Lateralization indices acquired during the Sentence Generation task will be significantly larger when calculated relative to an active baseline task (number counting, i.e. automatic speech production) than when calculated relative to a resting baseline.
 
 
+```{r readdata}
+#setwd("~/deevybee_repo/holly_rutherford")
+alldat <- read.csv('WSLG_AnalysisData.csv')
+allsubs <- read.csv('WSLG_Participant_Info.csv')
+#str(alldat) #uncomment these lines to check variables in the file
+#head(alldat)
 
+#compute percentage of trials marked as omitted before processing
+#This number is reported in Results.
 
+totNtrials<-61*31
+omittrial <- 100*(totNtrials-sum(alldat[,2:61]))/totNtrials 
 
+```
+
+```{r descriptives}
+shortdat <- select(alldat,N_Word,N_Sent,N_List,
+                   LI_Word,LI_Sent,LI_List,
+                   latency_Word,latency_Sent,latency_List,
+                   lat_Word,lat_Sent,lat_List)
+stargazer(shortdat[1:9], type = "text")
+
+#add 3 extra columns for laterality categories: these will be overwritten
+shortdat$latcat_Word <-shortdat$lat_Word
+shortdat$latcat_Sent <-shortdat$lat_Sent
+shortdat$latcat_List <-shortdat$lat_List
+for (i in 13:15){
+shortdat[,i]<-'L'
+w<-which(shortdat[,(i-3)]==0)
+shortdat[w,i]<-'B'
+w<-which(shortdat[,(i-3)]==-1)
+shortdat[w,i]<-'R'
+}
+
+shortdat$lat3 <- paste0(shortdat$latcat_Sent,shortdat$latcat_Word,shortdat$latcat_List)
+print('3 tasks categorical: Sentence, Word, List')
+table(shortdat$lat3)
+```
+
+```{r splithalf}
+ print('Spearman split half reliability')
+print("Word Generation")
+cor(alldat$odd_Word,alldat$even_Word,method="spearman")
+print("Sentence Generation")
+cor(alldat$odd_Sent,alldat$even_Sent,method="spearman")
+print("List Generation")
+cor(alldat$odd_List,alldat$even_List,method="spearman")
+```
+One sample t-tests were used to investigate whether the LIs from each task were significantly different from zero 
+```{r ttests}
+t.test(shortdat$LI_Word, y = NULL,
+       alternative = c("greater"),
+       mu = 0, paired = FALSE, var.equal = FALSE,
+       conf.level = 0.95)
+t.test(shortdat$LI_Sent, y = NULL,
+       alternative = c("greater"),
+       mu = 0, paired = FALSE, var.equal = FALSE,
+       conf.level = 0.95)
+t.test(shortdat$LI_List, y = NULL,
+       alternative = c("greater"),
+       mu = 0, paired = FALSE, var.equal = FALSE,
+       conf.level = 0.95)
+```
+
+```{r pirates}
+#make long form file
+nsub<-nrow(alldat)
+mylong<-data.frame(matrix(NA,nsub*3,ncol=2))
+colnames(mylong)<-c('task','LI')
+mylong$task<-c(rep('Sentence',31),rep('Word',31),rep('List',31))
+mylong$LI[1:nsub]<-alldat$LI_Sent
+mylong$LI[(nsub+1):(2*nsub)]<-alldat$LI_Word
+mylong$LI[(2*nsub+1):(3*nsub)]<-alldat$LI_List
+pirateplot(LI~task,data=mylong)
+```
+
+```{r blandalt}
+plot((shortdat$LI_Word+shortdat$LI_Sent)/2, shortdat$LI_Word-shortdat$LI_Sent, main="Bland-Altman Plot",xlab='Mean LI',ylab='Difference in LI')
+abline(h=2.5,lty=2)
+abline(h=-2.5,lty=2)
+
+```
+
+```{r intertestcorr}
+png(filename="correl3.png", width=2500, height=1000,res=300)
+par(mfrow=c(1,3))#plots in one row and 3 columns
+    plot(alldat$LI_List,alldat$LI_Word,pch=19,xlab='LI List',ylab='LI Word',xlim=c(-6,8),ylim=c(-4,8))
+    text(2,-3,paste0('rs = ',round(cor(alldat$LI_List,alldat$LI_Word,method="spearman"),3)))
+  plot(alldat$LI_List,alldat$LI_Sent,pch=19,xlab='LI List',ylab='LI Sentence',xlim=c(-6,8),ylim=c(-4,8))
+      text(2,-3,paste0('rs = ',round(cor(alldat$LI_List,alldat$LI_Sent,method="spearman"),3)))
+    plot(alldat$LI_Sent,alldat$LI_Word,pch=19,xlab='LI Sentence',ylab='LI Word',xlim=c(-6,8),ylim=c(-4,8))
+     text(2,-3,paste0('rs = ',round(cor(alldat$LI_Sent,alldat$LI_Word,method="spearman"),3)))
+     dev.off()
+```
+
+```{r makeSentminusList}
+alldat$SentMinusList <-alldat$LI_Sent-alldat$LI_List
+t.test(alldat$LI_Sent, y = NULL,
+       alternative = c("greater"),
+       mu = 0, paired = FALSE, var.equal = FALSE,
+       conf.level = 0.95)
+t.test(alldat$SentMinusList, y = NULL,
+       alternative = c("greater"),
+       mu = 0, paired = FALSE, var.equal = FALSE,
+       conf.level = 0.95)
+plot(alldat$LI_Sent,alldat$SentMinusList,col=allsubs$Handedness)
+
+plot(alldat$latency_List,alldat$SentMinusList)
+```
+
+```{r blandalt2}
+#Also do Bland Altman for task with and without List gen subtracted
+
+plot((alldat$SentMinusList+alldat$LI_Sent)/2, alldat$SentMinusList-alldat$LI_Sent, main="Bland-Altman Plot: with and without List subtracted",xlab='Mean LI',ylab='Difference in LI')
+abline(h=2.5,lty=2)
+abline(h=-2.5,lty=2)
+#So this shows quite a few points outside the expected range : though that range was based on WG, so not sure if appropriate?
+
+```
 ##Session information
 ```{r sessinfo}
 sessionInfo()
