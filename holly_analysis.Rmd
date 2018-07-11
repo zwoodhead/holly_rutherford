@@ -1,0 +1,33 @@
+---
+title: "Measurement of language laterality"
+author: "DVM Bishop"
+date: "11/07/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+Data from this project are available on Open Science Framework here: <https://osf.io/pq6wu/>.
+
+These results will be added to manuscript entitled: 'Measurement of language laterality using functional transcranial Doppler ultrasound: does a baseline improve measurement?' authored by Holly Rutherford, Zoe V. J. Woodhead, and Dorothy V. M. Bishop.
+
+This study was pre-registered on: <https://osf.io/6qzex/register/565fb3678c5e4a66b5582f67>.
+
+Preregistered hypotheses:
+
+**Hypothesis 1**: Individuals will be consistent in measures of hemispheric lateralization across different language domains; namely, measures of lateralization (Lateralization Index) will be statistically equivalent across Word Generation and Sentence Generation Tasks.
+
+**Hypothesis 2**: Lateralization indices acquired during the Sentence Generation task will be significantly larger when calculated relative to an active baseline task (number counting, i.e. automatic speech production) than when calculated relative to a resting baseline.
+
+
+
+
+
+##Session information
+```{r sessinfo}
+sessionInfo()
+```
