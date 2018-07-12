@@ -10,6 +10,9 @@ knitr::opts_chunk$set(echo = TRUE)
 require(stargazer)
 require(tidyverse)
 require(yarrr)
+library(doBy)
+library(psych)
+library(knitr)
 ```
 
 ## R Markdown
@@ -42,13 +45,49 @@ omittrial <- 100*(totNtrials-sum(alldat[,2:61]))/totNtrials
 
 ```
 
-```{r descriptives}
-shortdat <- select(alldat,N_Word,N_Sent,N_List,
-                   LI_Word,LI_Sent,LI_List,
-                   latency_Word,latency_Sent,latency_List,
-                   lat_Word,lat_Sent,lat_List)
-stargazer(shortdat[1:9], type = "text")
+```{r splithalf}
+spear<-c(NA,NA,NA)
+ print('Spearman split half reliability')
+print("Word Generation")
+spear[3]<-cor(alldat$odd_Word,alldat$even_Word,method="spearman")
+spear[3]
+print("Sentence Generation")
+spear[2]<-cor(alldat$odd_Sent,alldat$even_Sent,method="spearman")
+spear[2]
+print("List Generation")
+spear[1]<-cor(alldat$odd_List,alldat$even_List,method="spearman")
+spear[1]
 
+spear<-round(spear,2)
+```
+
+```{r descriptives}
+shortdat <- select(alldat,N_List,N_Sent,N_Word,
+                   LI_List,LI_Sent,LI_Word,
+                   latency_List,latency_Sent,latency_Word,
+                   lat_List,lat_Sent,lat_Word)
+stargazer(shortdat[1:9], type = "text") #just for quick viewing
+
+sumtable<-round(describe(shortdat),2)
+
+#create data frame for table 1
+table1<-data.frame(matrix(NA,nrow=7,ncol=3))
+colnames(table1)<-c('List','Sentence','Word')
+rownames(table1)<-c('N trials','LI','Latency','N left','N bilateral','N right','Split-half r')
+#Now populate table1
+
+for (i in 1:3){
+  table1[1,i]<-paste0(sumtable[i,3]," (",sumtable[i,4],")")
+    table1[2,i]<-paste0(sumtable[(3+i),3]," (",sumtable[(3+i),4],")")
+     table1[3,i]<-paste0(sumtable[(6+i),3]," (",sumtable[(6+i),4],")")
+     table1[4,i]<-length(which(shortdat[,(9+i)]==1))
+       table1[5,i]<-length(which(shortdat[,(9+i)]==0))
+              table1[6,i]<-length(which(shortdat[,(9+i)]==-1))
+              table1[7,i]<-spear[i]
+       
+}
+write.table(table1,paste0('holly_table1.txt'),sep='\t',quote=FALSE)
+kable(table1)
 #add 3 extra columns for laterality categories: these will be overwritten
 shortdat$latcat_Word <-shortdat$lat_Word
 shortdat$latcat_Sent <-shortdat$lat_Sent
@@ -66,72 +105,86 @@ print('3 tasks categorical: Sentence, Word, List')
 table(shortdat$lat3)
 ```
 
-```{r splithalf}
- print('Spearman split half reliability')
-print("Word Generation")
-cor(alldat$odd_Word,alldat$even_Word,method="spearman")
-print("Sentence Generation")
-cor(alldat$odd_Sent,alldat$even_Sent,method="spearman")
-print("List Generation")
-cor(alldat$odd_List,alldat$even_List,method="spearman")
-```
+
 One sample t-tests were used to investigate whether the LIs from each task were significantly different from zero 
 ```{r ttests}
-t.test(shortdat$LI_Word, y = NULL,
+t3<-t.test(shortdat$LI_Word, y = NULL,
        alternative = c("greater"),
        mu = 0, paired = FALSE, var.equal = FALSE,
        conf.level = 0.95)
-t.test(shortdat$LI_Sent, y = NULL,
+t2<-t.test(shortdat$LI_Sent, y = NULL,
        alternative = c("greater"),
        mu = 0, paired = FALSE, var.equal = FALSE,
        conf.level = 0.95)
-t.test(shortdat$LI_List, y = NULL,
+t1<-t.test(shortdat$LI_List, y = NULL,
        alternative = c("greater"),
        mu = 0, paired = FALSE, var.equal = FALSE,
        conf.level = 0.95)
+
+t4 <-t.test(shortdat$LI_Sent,shortdat$LI_Word,paired=TRUE,alternative='two.sided')
+
 ```
 
 ```{r pirates}
 #make long form file
 nsub<-nrow(alldat)
 mylong<-data.frame(matrix(NA,nsub*3,ncol=2))
-colnames(mylong)<-c('task','LI')
-mylong$task<-c(rep('Sentence',31),rep('Word',31),rep('List',31))
+colnames(mylong)<-c('Task','LI')
+mylong$Task<-c(rep('Sentence',31),rep('Word',31),rep('List',31))
 mylong$LI[1:nsub]<-alldat$LI_Sent
 mylong$LI[(nsub+1):(2*nsub)]<-alldat$LI_Word
 mylong$LI[(2*nsub+1):(3*nsub)]<-alldat$LI_List
-pirateplot(LI~task,data=mylong)
+png(filename="LIpirate.png", width=1500, height=1500,res=300)
+
+pirateplot(LI~Task,data=mylong,point.o=.7,inf.f.o=0,inf.b.o=0)
+text(1,6,paste0('t = ', round(t1$statistic,2),'\np = ',round(t1$p.value,3)))
+text(2,-3,paste0('t = ', round(t2$statistic,2),'\np < .001'))
+
+text(3,-3,paste0('t = ', round(t3$statistic,2),'\np < .001'))
+
+dev.off()
 ```
 
-```{r blandalt}
-plot((shortdat$LI_Word+shortdat$LI_Sent)/2, shortdat$LI_Word-shortdat$LI_Sent, main="Bland-Altman Plot",xlab='Mean LI',ylab='Difference in LI')
-abline(h=2.5,lty=2)
-abline(h=-2.5,lty=2)
 
-```
 
 ```{r intertestcorr}
 png(filename="correl3.png", width=2500, height=1000,res=300)
 par(mfrow=c(1,3))#plots in one row and 3 columns
-    plot(alldat$LI_List,alldat$LI_Word,pch=19,xlab='LI List',ylab='LI Word',xlim=c(-6,8),ylim=c(-4,8))
-    text(2,-3,paste0('rs = ',round(cor(alldat$LI_List,alldat$LI_Word,method="spearman"),3)))
-  plot(alldat$LI_List,alldat$LI_Sent,pch=19,xlab='LI List',ylab='LI Sentence',xlim=c(-6,8),ylim=c(-4,8))
-      text(2,-3,paste0('rs = ',round(cor(alldat$LI_List,alldat$LI_Sent,method="spearman"),3)))
-    plot(alldat$LI_Sent,alldat$LI_Word,pch=19,xlab='LI Sentence',ylab='LI Word',xlim=c(-6,8),ylim=c(-4,8))
-     text(2,-3,paste0('rs = ',round(cor(alldat$LI_Sent,alldat$LI_Word,method="spearman"),3)))
+mycolours<-c('red','blue')
+    plot(alldat$LI_List,alldat$LI_Word,pch=19,xlab='LI List',ylab='LI Word',xlim=c(-6,8),ylim=c(-4,8),col=mycolours[allsubs$Handedness])
+    text(2,-3,paste0('r = ',round(cor(alldat$LI_List,alldat$LI_Word,method="spearman"),3)))
+     abline(h=0, lty=2)
+    abline(v=0, lty=2)
+      legend("topleft", inset=.05, title="Handedness",
+        c('Left','Right'),col=mycolours,pch=16,cex=.8)
+  plot(alldat$LI_List,alldat$LI_Sent,pch=19,xlab='LI List',ylab='LI Sentence',xlim=c(-6,8),ylim=c(-4,8),col=mycolours[allsubs$Handedness])
+  abline(h=0, lty=2)
+    abline(v=0, lty=2)
+      text(2,-3,paste0('r = ',round(cor(alldat$LI_List,alldat$LI_Sent,method="spearman"),3)))
+    plot(alldat$LI_Sent,alldat$LI_Word,pch=19,xlab='LI Sentence',ylab='LI Word',xlim=c(-6,8),ylim=c(-4,8),col=mycolours[allsubs$Handedness])
+     abline(h=0, lty=2)
+    abline(v=0, lty=2)
+     text(2,-3,paste0('r = ',round(cor(alldat$LI_Sent,alldat$LI_Word,method="spearman"),3)))
+    
      dev.off()
 ```
+```{r blandalt}
+png(filename="blandaltman.png", width=1500, height=1250,res=300)
+mycolours<-c('red','blue')
+plot((shortdat$LI_Word+shortdat$LI_Sent)/2, shortdat$LI_Word-shortdat$LI_Sent, main="Bland-Altman Plot",xlab='Mean LI',ylab='Difference in LI',pch=16,col=mycolours[allsubs$Handedness],cex=.8)
+abline(h=2.5,lty=2)
+abline(h=-2.5,lty=2)
+ legend("topright", inset=.05, title="Handedness",
+        c('Left','Right'),col=mycolours,pch=16,cex=.8)
+dev.off()
+
+```
+
 
 ```{r makeSentminusList}
-alldat$SentMinusList <-alldat$LI_Sent-alldat$LI_List
-t.test(alldat$LI_Sent, y = NULL,
-       alternative = c("greater"),
-       mu = 0, paired = FALSE, var.equal = FALSE,
-       conf.level = 0.95)
-t.test(alldat$SentMinusList, y = NULL,
-       alternative = c("greater"),
-       mu = 0, paired = FALSE, var.equal = FALSE,
-       conf.level = 0.95)
+alldat$SentListA <-alldat$LI_Sent-alldat$LI_List
+
+#A couple of plots just to explore
 plot(alldat$LI_Sent,alldat$SentMinusList,col=allsubs$Handedness)
 
 plot(alldat$latency_List,alldat$SentMinusList)
@@ -144,6 +197,35 @@ plot((alldat$SentMinusList+alldat$LI_Sent)/2, alldat$SentMinusList-alldat$LI_Sen
 abline(h=2.5,lty=2)
 abline(h=-2.5,lty=2)
 #So this shows quite a few points outside the expected range : though that range was based on WG, so not sure if appropriate?
+
+```
+
+```{r othersubtract}
+listbase <- read.csv('WSLG_ListBaseline_Data.csv')
+alldat$SG_LG_b.wave<-listbase$LI_SGvLG
+poimeans <- read.csv('WSLG_POImean_Data.csv')
+alldat$SG_LG_c.poi<-poimeans$SentGen-poimeans$ListGen
+
+stargazer(alldat[,94:96],type='text')
+
+
+t.test(alldat$LI_Sent, y = NULL,
+       alternative = c("greater"),
+       mu = 0, paired = FALSE, var.equal = FALSE,
+       conf.level = 0.95)
+t.test(alldat$SentListA, y = NULL,
+       alternative = c("greater"),
+       mu = 0, paired = FALSE, var.equal = FALSE,
+       conf.level = 0.95)
+t.test(alldat$SG_LG_b.wave, y = NULL,
+       alternative = c("greater"),
+       mu = 0, paired = FALSE, var.equal = FALSE,
+       conf.level = 0.95)
+t.test(alldat$SG_LG_c.poi, y = NULL,
+       alternative = c("greater"),
+       mu = 0, paired = FALSE, var.equal = FALSE,
+       conf.level = 0.95)
+cor(alldat[,c(67,93:95)])
 
 ```
 ##Session information
