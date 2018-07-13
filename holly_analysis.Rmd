@@ -144,9 +144,47 @@ text(3,-3,paste0('t = ', round(t3$statistic,2),'\np < .001'))
 
 dev.off()
 ```
+##Difference waveforms for the 3 tasks
+Decided we also needed a figure to visualise pattern of activation
+
+```{r plotdiffs}
+#fiddle about to create list of subject names
+subnames<-seq(1:32)
+subnames<-c(subnames[1:24],subnames[26:32])
+subnames<-paste0('0',subnames)
+subnames[1:9]<-paste0('0',subnames[1:9])
+nsub<-length(subnames)
+tasklist<-c('List','Sent','Word')
+     #set up file for grand avg
+     df<-data.frame(matrix(NA,nrow=nrow(plotfile),ncol=1+(nsub*3)))
+     colnames(df)[1]<-'time'
+     df$time<-plotfile$time
+thiscol<-0
+for (t in 1:3){ #3 tasks
+  #set up plot
+  thisfile<-paste0('WSLG_Rawmeans/Rawmeans_001_ListGen.csv')
+     plotfile<-read.csv(thisfile)
+     plot(plotfile$time,plotfile$meanDiff,type='n',xlab='Time (s)',ylab='L-R blood flow',main=tasklist[t],ylim=c(-6,6))
 
 
+  for (n in 1:nsub){
+    thiscol<-thiscol+1
+    thisfile<-paste0('WSLG_Rawmeans/Rawmeans_',subnames[n],'_',tasklist[t],'Gen.csv')
+    temp<-read.csv(thisfile)
+    lines(temp$time,temp$meanDiff,type='l',col='grey')
+    df[,thiscol]<-temp$meanDiff
+    colnames(df)[thiscol]<-paste0(tasklist[t],subnames[n])
+    
+  }
+  colrange<-c((thiscol-nsub):thiscol)
+  thismean<-rowMeans(df[,colrange])
+  lines(temp$time,thismean,type='l',col='blue')
+  abline(v=4,lty=2)
+  abline(v=14,lty=2)
+}
 
+
+```
 ```{r intertestcorr}
 png(filename="correl3.png", width=2500, height=1000,res=300)
 par(mfrow=c(1,3))#plots in one row and 3 columns
@@ -184,31 +222,22 @@ dev.off()
 ```{r makeSentminusList}
 alldat$SentListA <-alldat$LI_Sent-alldat$LI_List
 
-#A couple of plots just to explore
-plot(alldat$LI_Sent,alldat$SentMinusList,col=allsubs$Handedness)
-
-plot(alldat$latency_List,alldat$SentMinusList)
-```
-
-```{r blandalt2}
-#Also do Bland Altman for task with and without List gen subtracted
-
-plot((alldat$SentMinusList+alldat$LI_Sent)/2, alldat$SentMinusList-alldat$LI_Sent, main="Bland-Altman Plot: with and without List subtracted",xlab='Mean LI',ylab='Difference in LI')
-abline(h=2.5,lty=2)
-abline(h=-2.5,lty=2)
-#So this shows quite a few points outside the expected range : though that range was based on WG, so not sure if appropriate?
+#A plot just to explore
+plot(alldat$LI_Sent,alldat$SentListA,col=mycolours[allsubs$Handedness],pch=16)
 
 ```
+
 
 ```{r othersubtract}
 listbase <- read.csv('WSLG_ListBaseline_Data.csv')
 alldat$SG_LG_b.wave<-listbase$LI_SGvLG
 poimeans <- read.csv('WSLG_POImean_Data.csv')
 alldat$SG_LG_c.poi<-poimeans$SentGen-poimeans$ListGen
+alldat$SentGen_mean<-poimeans$SentGen
 
-stargazer(alldat[,94:96],type='text')
+stargazer(alldat[,93:95],type='text')
 
-
+#One-tailed t-tests to check if LI sig different from zero
 t.test(alldat$LI_Sent, y = NULL,
        alternative = c("greater"),
        mu = 0, paired = FALSE, var.equal = FALSE,
@@ -225,9 +254,40 @@ t.test(alldat$SG_LG_c.poi, y = NULL,
        alternative = c("greater"),
        mu = 0, paired = FALSE, var.equal = FALSE,
        conf.level = 0.95)
-cor(alldat[,c(67,93:95)])
+
+#Pre-planned matched t-test to compare if original LI with subtracted LI
+
+t.test(alldat$LI_Sent, alldat$SentListA,
+       alternative = c( "less"),
+       mu = 0, paired = TRUE, var.equal = FALSE,
+       conf.level = 0.975)
 
 ```
+##Exploratory analyses
+1. Is bilateral language a true category, or a consequence of poor reliability?
+
+Language laterality is coded as bilateral when the confidence interval for the LI encompasses zero. This could reflect genuine lack of bias, but it could also occur if the subject had noisy data. We explored this question by comparing the values of the standard error of the LI for those with consistent laterality (L or R) and those classified as bilateral. The standard errors for the lateralised vs nonlateralised were comparable for the SG and LG tasks, but for the WG task, the SE was substantially higher for the bilateral group, suggesting that unreliability played a role in their categorisation as bilateral.
+
+```{r bilat.se}
+#compare mean SE for lateralised vs bilateral groups
+secols<-c(68,77,86,72,81,90)#ses for the 3 tasks then latcategory for 3 tasks
+mylabels<-c('Sentence','List','Word')
+
+for (i in 1:3){
+  
+  mymodel<-lm(alldat[,secols[i]]~abs(alldat[,secols[(i+3)]]))
+  print(mylabels[i])
+  print(summary(aov(mymodel)))
+  
+  beanplot(alldat[,secols[i]]~abs(alldat[,secols[(i+3)]]),main=mylabels[i])
+}
+
+```
+##2. Is the bimodality of laterality indices an artefact of the method of calculation?
+
+
+
+
 ##Session information
 ```{r sessinfo}
 sessionInfo()
