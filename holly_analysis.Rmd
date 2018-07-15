@@ -106,7 +106,7 @@ table(shortdat$lat3)
 ```
 
 
-One sample t-tests were used to investigate whether the LIs from each task were significantly different from zero 
+One sample t-tests were used to investigate whether the LIs from each task were significantly different from zero. Two-sample t-test to compare LI for Sentence Generation and Word Generation
 ```{r ttests}
 t3<-t.test(shortdat$LI_Word, y = NULL,
        alternative = c("greater"),
@@ -135,6 +135,7 @@ mylong$LI[1:nsub]<-alldat$LI_Sent
 mylong$LI[(nsub+1):(2*nsub)]<-alldat$LI_Word
 mylong$LI[(2*nsub+1):(3*nsub)]<-alldat$LI_List
 png(filename="LIpirate.png", width=1500, height=1500,res=300)
+par(mai = c(.5, .8, .05, 0.05))# mai specifies bottom, left, top and right margins in inches
 
 pirateplot(LI~Task,data=mylong,point.o=.7,inf.f.o=0,inf.b.o=0)
 text(1,6,paste0('t = ', round(t1$statistic,2),'\np = ',round(t1$p.value,3)))
@@ -145,7 +146,7 @@ text(3,-3,paste0('t = ', round(t3$statistic,2),'\np < .001'))
 dev.off()
 ```
 ##Difference waveforms for the 3 tasks
-Decided we also needed a figure to visualise pattern of activation
+Figures to visualise pattern of activation. Add colour codes to show if subject categorised as L, B or R.
 
 ```{r plotdiffs}
 #fiddle about to create list of subject names
@@ -155,23 +156,35 @@ subnames<-paste0('0',subnames)
 subnames[1:9]<-paste0('0',subnames[1:9])
 nsub<-length(subnames)
 tasklist<-c('List','Sent','Word')
+titlelist<-c('List','Sentence','Word')
+catcol[1]<-which(names(alldat)==c("lat_List"))
+catcol[2]<-which(names(alldat)==c("lat_Sent"))
+catcol[3]<-which(names(alldat)==c("lat_Word"))
+
+catcolour<-c('lightblue','grey','pink')
      #set up file for grand avg
      df<-data.frame(matrix(NA,nrow=nrow(plotfile),ncol=1+(nsub*3)))
      colnames(df)[1]<-'time'
      df$time<-plotfile$time
 thiscol<-0
-for (t in 1:3){ #3 tasks
+png(filename="LIdiffwaves.png", width=1000, height=1500,res=300)
+par(mfrow=c(3,1),mai = c(.3, .5, 0.5, 0.1))
+# mai specifies bottom, left, top and right margins in inches
+
+for (t in 1:3){ #3 task5
   #set up plot
   thisfile<-paste0('WSLG_Rawmeans/Rawmeans_001_ListGen.csv')
      plotfile<-read.csv(thisfile)
-     plot(plotfile$time,plotfile$meanDiff,type='n',xlab='Time (s)',ylab='L-R blood flow',main=tasklist[t],ylim=c(-6,6))
-
+     plot(plotfile$time,plotfile$meanDiff,type='n',ylab='L-R blood flow',main=titlelist[t],ylim=c(-6,6),cex.axis=.7)
+    mtext("Time (s)", side=1, line=2, cex=.6) #x axis label positioned higher than default (default is line 3 which is not visible given margin changes)
+ 
+catdata<-alldat[,catcol[t]]+2  #convert -1 to 1 to 1:3
 
   for (n in 1:nsub){
     thiscol<-thiscol+1
     thisfile<-paste0('WSLG_Rawmeans/Rawmeans_',subnames[n],'_',tasklist[t],'Gen.csv')
     temp<-read.csv(thisfile)
-    lines(temp$time,temp$meanDiff,type='l',col='grey')
+   lines(temp$time,temp$meanDiff,col=catcolour[catdata[n]])
     df[,thiscol]<-temp$meanDiff
     colnames(df)[thiscol]<-paste0(tasklist[t],subnames[n])
     
@@ -181,8 +194,11 @@ for (t in 1:3){ #3 tasks
   lines(temp$time,thismean,type='l',col='blue')
   abline(v=4,lty=2)
   abline(v=14,lty=2)
+  abline(h=0,lty=1,col='darkgrey')
 }
-
+ legend("bottomleft", inset=.05, title="Laterality category",
+        c('Left','Bilateral','Right'),col=catcolour[c(3,2,1)],lty=1,cex=.5)
+dev.off()
 
 ```
 ```{r intertestcorr}
@@ -284,10 +300,52 @@ for (i in 1:3){
 
 ```
 ##2. Is the bimodality of laterality indices an artefact of the method of calculation?
+Look at distribution of scores on ListGen with standard LI and poimeanLI
 
+```{r bimodal.check}
+LG1<-alldat$LI_List
+LG2<-poimeans$ListGen
+png(filename="hist2.png", width=1500, height=800,res=300)
+par(mai = c(.5, .5, .5, 0.2))# mai specifies bottom, left, top and right margins in inches
 
+par(mfrow=c(1,2))
+par(cex=.5) #was struggling to control size in the plot: this works a treat!
+hist(LG1,main='LI from peak',xlab='LI',ylim=c(0,9),breaks=seq(-6,6,by=1),cex=.8,col='green')
 
+hist(LG2,main='LI from mean in POI',xlab='LI',ylim=c(0,9),breaks=seq(-6,6,by=1),cex=.8,col='green')
 
+dev.off()
+
+```
+##Visualisation of impact of subtracting List from Sentence
+
+```{r vis.subtract}
+png(filename="subtractview.png", width=1500, height=1500,res=300)
+par(mai = c(.5, .8, .05, 0.5))# mai specifies bottom, left, top and right margins in inches
+
+#sort by LI on sent
+thisorder <- order(alldat$SentListA)
+
+#make a plot frame
+for3plot <-select(alldat,LI_List,LI_Sent,SentListA,lat_List)
+for3plot$lat_List<-for3plot$lat_List+2 #recode so can use as index for colour
+for3plot<-for3plot[thisorder,]
+#for3plot$ID <-seq(1:nrow(for3plot))
+for3plot<-data.frame(t(for3plot)) #tranpose to easily plot lines
+xlabs=c('List \nGeneration','Sentence \nGeneration','Sentence\nminus List')
+ plot(for3plot[1:3,1],type='n',ylim=c(-6,10),xaxt='n',ylab='LI',xlab='')
+ axis(1, seq(1,3,by=1),xlabs,tck=.01)
+ catcolour<-c('blue','darkgrey','red') #for R B and L category on List generation
+for (i in 1:ncol(for3plot)){
+  
+  lines(for3plot[1:3,i],col=catcolour[for3plot[4,i]],lty=2,pch=15,type='o')
+}
+
+abline(h=0)
+ legend("topleft", inset=.05, title="Laterality on \nList Generation",
+        c('Left','Bilateral','Right'),col=catcolour[c(3,2,1)],pch=15,cex=.8,bty='n')
+ dev.off()
+```
 ##Session information
 ```{r sessinfo}
 sessionInfo()
