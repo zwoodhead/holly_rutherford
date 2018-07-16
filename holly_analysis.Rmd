@@ -13,11 +13,13 @@ require(yarrr)
 library(doBy)
 library(psych)
 library(knitr)
+require(BlandAltmanLeh)
 ```
 
 ## R Markdown
 
 Data from this project are available on Open Science Framework here: <https://osf.io/pq6wu/>.
+N.B. The scripts in this document read raw data files, so working directory must be set to a location where these can be found.
 
 These results will be added to manuscript entitled: 'Measurement of language laterality using functional transcranial Doppler ultrasound: does a baseline improve measurement?' authored by Holly Rutherford, Zoe V. J. Woodhead, and Dorothy V. M. Bishop.
 
@@ -157,6 +159,7 @@ subnames[1:9]<-paste0('0',subnames[1:9])
 nsub<-length(subnames)
 tasklist<-c('List','Sent','Word')
 titlelist<-c('List','Sentence','Word')
+catcol<-vector()
 catcol[1]<-which(names(alldat)==c("lat_List"))
 catcol[2]<-which(names(alldat)==c("lat_Sent"))
 catcol[3]<-which(names(alldat)==c("lat_Word"))
@@ -192,8 +195,8 @@ catdata<-alldat[,catcol[t]]+2  #convert -1 to 1 to 1:3
   colrange<-c((thiscol-nsub):thiscol)
   thismean<-rowMeans(df[,colrange])
   lines(temp$time,thismean,type='l',col='blue')
-  abline(v=4,lty=2)
-  abline(v=14,lty=2)
+  abline(v=7,lty=2)
+  abline(v=17,lty=2)
   abline(h=0,lty=1,col='darkgrey')
 }
  legend("bottomleft", inset=.05, title="Laterality category",
@@ -224,10 +227,18 @@ mycolours<-c('red','blue')
 ```
 ```{r blandalt}
 png(filename="blandaltman.png", width=1500, height=1250,res=300)
-mycolours<-c('red','blue')
-plot((shortdat$LI_Word+shortdat$LI_Sent)/2, shortdat$LI_Word-shortdat$LI_Sent, main="Bland-Altman Plot",xlab='Mean LI',ylab='Difference in LI',pch=16,col=mycolours[allsubs$Handedness],cex=.8)
-abline(h=2.5,lty=2)
-abline(h=-2.5,lty=2)
+par(mai = c(.5, .5, .2, 0.2))# mai specifies bottom, left, top and right margins in inches
+
+plot((shortdat$LI_Word+shortdat$LI_Sent)/2, shortdat$LI_Word-shortdat$LI_Sent, main="",xlab='Mean LI',ylab='Difference in LI',pch=16,col=mycolours[allsubs$Handedness],cex=.8)
+
+
+temp<-shortdat$LI_Word-shortdat$LI_Sent
+abline(h=mean(temp),lty=2)
+CIhi<-mean(temp)+1.96*sd(temp)
+CIlo<-mean(temp)-1.96*sd(temp)
+rect(-.5,-2.5,7.5,2.5, col= '#FF003322')
+abline(h=CIlo,lty=3)
+abline(h=CIhi,lty=3)
  legend("topright", inset=.05, title="Handedness",
         c('Left','Right'),col=mycolours,pch=16,cex=.8)
 dev.off()
