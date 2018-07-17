@@ -13,7 +13,7 @@ require(yarrr)
 library(doBy)
 library(psych)
 library(knitr)
-require(BlandAltmanLeh)
+require(beanplot)
 ```
 
 ## R Markdown
@@ -165,7 +165,9 @@ catcol[2]<-which(names(alldat)==c("lat_Sent"))
 catcol[3]<-which(names(alldat)==c("lat_Word"))
 
 catcolour<-c('lightblue','grey','pink')
-     #set up file for grand avg
+     #set up file for grand avg - just use first file to get parameters
+  thisfile<-'WSLG_Rawmeans/Rawmeans_001_ListGen.csv'
+     plotfile<-read.csv(thisfile)
      df<-data.frame(matrix(NA,nrow=nrow(plotfile),ncol=1+(nsub*3)))
      colnames(df)[1]<-'time'
      df$time<-plotfile$time
@@ -289,6 +291,8 @@ t.test(alldat$LI_Sent, alldat$SentListA,
        mu = 0, paired = TRUE, var.equal = FALSE,
        conf.level = 0.975)
 
+cor(alldat[,c(67,93:95)])
+colMeans(alldat[,c(67,93:95)])
 ```
 ##Exploratory analyses
 1. Is bilateral language a true category, or a consequence of poor reliability?
@@ -307,6 +311,7 @@ for (i in 1:3){
   print(summary(aov(mymodel)))
   
   beanplot(alldat[,secols[i]]~abs(alldat[,secols[(i+3)]]),main=mylabels[i])
+  #plot se values divided by absolute lat value, so L and R are 1, bilateral is 0
 }
 
 ```
@@ -325,6 +330,7 @@ hist(LG1,main='LI from peak',xlab='LI',ylim=c(0,9),breaks=seq(-6,6,by=1),cex=.8,
 
 hist(LG2,main='LI from mean in POI',xlab='LI',ylim=c(0,9),breaks=seq(-6,6,by=1),cex=.8,col='green')
 
+cor(LG1,LG2,method='spearman') #correlation between peak method and mean in POI method
 dev.off()
 
 ```
