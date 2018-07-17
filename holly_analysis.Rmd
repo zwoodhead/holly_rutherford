@@ -33,7 +33,8 @@ Preregistered hypotheses:
 
 
 ```{r readdata}
-#setwd("~/deevybee_repo/holly_rutherford")
+setwd("C:/Users/zwoodhead/Dropbox/Project A2/Doppler_Tasks/WG_SG_LG")
+mydir<-"C:/Users/zwoodhead/Dropbox/Project A2/Doppler_Tasks/WG_SG_LG"
 alldat <- read.csv('WSLG_AnalysisData.csv')
 allsubs <- read.csv('WSLG_Participant_Info.csv')
 #str(alldat) #uncomment these lines to check variables in the file
@@ -166,19 +167,19 @@ catcol[3]<-which(names(alldat)==c("lat_Word"))
 
 catcolour<-c('lightblue','grey','pink')
      #set up file for grand avg - just use first file to get parameters
-  thisfile<-'WSLG_Rawmeans/Rawmeans_001_ListGen.csv'
-     plotfile<-read.csv(thisfile)
+  thisfile<-'/WSLG_Rawmeans/Rawmeans_001_ListGen.csv'
+     plotfile<-read.csv(paste0(mydir,thisfile))
      df<-data.frame(matrix(NA,nrow=nrow(plotfile),ncol=1+(nsub*3)))
      colnames(df)[1]<-'time'
      df$time<-plotfile$time
 thiscol<-0
 png(filename="LIdiffwaves.png", width=1000, height=1500,res=300)
-par(mfrow=c(3,1),mai = c(.3, .5, 0.5, 0.1))
+par(mfrow=c(3,1),mai = c(.3, .5, 0.5, 0.1), oma=c(1,1,2,1))
 # mai specifies bottom, left, top and right margins in inches
 
 for (t in 1:3){ #3 task5
   #set up plot
-  thisfile<-paste0('WSLG_Rawmeans/Rawmeans_001_ListGen.csv')
+  thisfile<-paste0(mydir,'/WSLG_Rawmeans/Rawmeans_001_ListGen.csv')
      plotfile<-read.csv(thisfile)
      plot(plotfile$time,plotfile$meanDiff,type='n',ylab='L-R blood flow',main=titlelist[t],ylim=c(-6,6),cex.axis=.7)
     mtext("Time (s)", side=1, line=2, cex=.6) #x axis label positioned higher than default (default is line 3 which is not visible given margin changes)
@@ -187,7 +188,7 @@ catdata<-alldat[,catcol[t]]+2  #convert -1 to 1 to 1:3
 
   for (n in 1:nsub){
     thiscol<-thiscol+1
-    thisfile<-paste0('WSLG_Rawmeans/Rawmeans_',subnames[n],'_',tasklist[t],'Gen.csv')
+    thisfile<-paste0(mydir,'/WSLG_Rawmeans/Rawmeans_',subnames[n],'_',tasklist[t],'Gen.csv')
     temp<-read.csv(thisfile)
    lines(temp$time,temp$meanDiff,col=catcolour[catdata[n]])
     df[,thiscol]<-temp$meanDiff
@@ -201,8 +202,11 @@ catdata<-alldat[,catcol[t]]+2  #convert -1 to 1 to 1:3
   abline(v=17,lty=2)
   abline(h=0,lty=1,col='darkgrey')
 }
- legend("bottomleft", inset=.05, title="Laterality category",
-        c('Left','Bilateral','Right'),col=catcolour[c(3,2,1)],lty=1,cex=.5)
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = "n", bty = "n", xaxt = "n", yaxt = "n")
+legend("top", c('Left','Bilateral','Right'), xpd = TRUE, horiz = TRUE, inset = c(0, 
+    0), bty = "n", title="Laterality category", lty=1, col=catcolour[c(3,2,1)], cex=1)
+
 dev.off()
 
 ```
@@ -258,9 +262,9 @@ plot(alldat$LI_Sent,alldat$SentListA,col=mycolours[allsubs$Handedness],pch=16)
 
 
 ```{r othersubtract}
-listbase <- read.csv('WSLG_ListBaseline_Data.csv')
+listbase <- read.csv(paste0(mydir,'/WSLG_ListBaseline_Data.csv'))
 alldat$SG_LG_b.wave<-listbase$LI_SGvLG
-poimeans <- read.csv('WSLG_POImean_Data.csv')
+poimeans <- read.csv(paste0(mydir,'/WSLG_POImean_Data.csv'))
 alldat$SG_LG_c.poi<-poimeans$SentGen-poimeans$ListGen
 alldat$SentGen_mean<-poimeans$SentGen
 
